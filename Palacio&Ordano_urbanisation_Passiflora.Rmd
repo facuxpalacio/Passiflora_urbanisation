@@ -1,0 +1,452 @@
+---
+title: "Urbanisation weakens phenotypic selection but enhances the adaptive potential of fruit traits in a seed-dispersal mutualism"
+subtitle: "Supplementary material"
+author: 'Code author: Facundo X. Palacio'
+date: "`r Sys.Date()`"
+output: 
+  tufte::tufte_html:
+    toc: true
+---
+
+\ 
+
+This document presents an overview of the analyses in the main text. It highlights the essential R code used to conduct these analyses, but does not display code related to table and plot aesthetics. The code for this document is provided in **Palacio&Ordano_urbanisation_Passiflora.Rmd** and is available at https://github.com/facuxpalacio/Passiflora_urbanisation. 
+
+
+```{r setup, include = FALSE}
+# Suppress messages, warnings and errors for document aesthetics.
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error = FALSE, echo = TRUE)
+```
+
+```{r packages, results = 'hide'}
+# Load libraries
+library(dplyr) # Data management
+library(corrr) # Computing correlations
+library(ggraph) # Plotting graphs
+library(igraph) # Plotting graphs
+library(lme4) # Fitting mixed models
+library(lmerTest) # Adding p-values in mixed models
+library(multcomp) # Computing multiple comparisons
+library(MASS) # Fitting negative binomial models
+library(ggplot2) # Plotting
+library(ggpubr) # Arranging multiple panels in the same plot
+library(piecewiseSEM) # Structural equations
+library(boot) # Bootstrapping
+library(visreg) # Plotting fitness surface
+```
+
+## Correlations among fruit and seed traits
+
+```{r corr}
+# Load fruit data (fruit size, seed number)
+fruits <- read.table("C:/RD/Palacio&Ordano_fruits_urbanisation.txt", head = T)
+
+cors <- fruits %>% 
+  filter(population == "urban") %>%
+  select(mass_g, length, diam, seedn, pulp_sugar_bx, peel_sugar_bx) %>%
+  correlate() %>% 
+  stretch() %>%
+  graph_from_data_frame(directed = FALSE)
+
+ggraph(cors) +
+  geom_edge_link(aes(edge_alpha = abs(r), edge_width = abs(r), color = r)) +
+  guides(edge_alpha = "none", edge_width = "none") +
+  scale_edge_colour_gradientn(limits = c(-1, 1), 
+                              colors = c("firebrick2", "dodgerblue2")) +
+  geom_node_point(color = "black", size = 8) +
+  geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
+                 repel = TRUE)
+
+cors <- fruits %>% 
+  filter(population == "semiurban") %>%
+  select(mass_g, length, diam, seedn, pulp_sugar_bx, peel_sugar_bx) %>%
+  correlate() %>% 
+  stretch() %>%
+  graph_from_data_frame(directed = FALSE)
+
+ggraph(cors) +
+  geom_edge_link(aes(edge_alpha = abs(r), edge_width = abs(r), color = r)) +
+  guides(edge_alpha = "none", edge_width = "none") +
+  scale_edge_colour_gradientn(limits = c(-1, 1), 
+                              colors = c("firebrick2", "dodgerblue2")) +
+  geom_node_point(color = "black", size = 8) +
+  geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
+                 repel = TRUE)
+
+cors <- fruits %>% 
+  filter(population == "rural") %>%
+  select(mass_g, length, diam, seedn, pulp_sugar_bx, peel_sugar_bx) %>%
+  correlate() %>% 
+  stretch() %>%
+  graph_from_data_frame(directed = FALSE)
+
+ggraph(cors) +
+  geom_edge_link(aes(edge_alpha = abs(r), edge_width = abs(r), color = r)) +
+  guides(edge_alpha = "none", edge_width = "none") +
+  scale_edge_colour_gradientn(limits = c(-1, 1), 
+                              colors = c("firebrick2", "dodgerblue2")) +
+  geom_node_point(color = "black", size = 8) +
+  geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
+                 repel = TRUE)
+```
+
+\
+
+# Influence of urbanisation on fruit and seed traits
+```{r glmms}
+# Load plant data (fruit crop size and removal)
+plants <- read.table("C:/RD/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
+plants$population <- as.factor(plants$population)
+
+# Load fruit sugar data (it has information on raw concentrations of both fruit pulp and peel that needs to be preprocessed to obtain original concentrations)
+sugar <- read.table("C:/RD/Palacio&Ordano_sugar_urbanisation.txt", head = T)
+pulp <- subset(sugar, sample_type == "pulp")
+peel <- subset(sugar, sample_type == "peel")
+
+# Fruit crop size
+mcrop <- glm.nb(crop ~ population, data = plants)
+anova(mcrop)
+multcrop <- glht(mcrop, linfct = mcp(population = "Tukey"))
+summary(multcrop)
+
+mdiam <- lmer(diam ~ population + (1|idplant), data = fruits)
+anova(mdiam)
+multdiam <- glht(mdiam, linfct = mcp(population = "Tukey"))
+summary(multdiam)
+
+mseed <- lmer(seedn ~ population + (1|idplant), data = fruits)
+anova(mseed)
+
+mbx_pulp <- lmer(sugar_bx_obs ~ population + (1|idplant), data = pulp)
+anova(mbx_pulp)
+multpulp <- glht(mbx_pulp, linfct = mcp(population = "Tukey"))
+summary(multpulp)
+
+mbx_peel <- lmer(true_sugar_bx ~ population + (1|idplant), data = peel)
+anova(mbx_peel)
+multpeel<- glht(mbx_peel, linfct = mcp(population = "Tukey"))
+summary(multpeel)
+```
+
+\
+
+## Boxplots of fruit and seed traits along with mixed model p-values
+
+```{r boxplots}
+crop <- ggplot(data = plants, aes(x = population, y = crop)) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  xlab("Urbanisation level") + ylab("Fruit crop size") +
+  geom_text(data = data.frame(x = 1:3, y = c(30, 130, 110)), 
+            aes(x = x, y = y, label = c("a", "b", "b"))) + theme_bw()
+
+diam <- ggplot(data = fruits, aes(x = population, y = diam)) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5) +
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  xlab("Urbanisation level") + ylab("Fruit diameter (mm)") +
+  geom_text(data = data.frame(x = 1:3, y = c(44, 52, 47)), 
+            aes(x = x, y = y, label = c("a", "b", "a"))) + theme_bw()
+
+seedn <- ggplot(data = fruits, aes(x = population, y = seedn)) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  xlab("Urbanisation level") + ylab("Seed number") +
+  geom_text(data = data.frame(x = 1:3, y = c(315, 350, 360)), 
+            aes(x = x, y = y, label = c("ns", "ns", "ns"))) + theme_bw()
+
+pulp_bx <- ggplot(data = pulp, aes(x = population, y = sugar_bx_obs)) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  xlab("Urbanisation level") + ylab("Pulp soluble carbohydrate content (?Bx)") +
+  geom_text(data = data.frame(x = 1:3, y = c(22, 30, 29)), 
+            aes(x = x, y = y, label = c("a", "b", "c"))) + theme_bw()
+
+peel_bx <- ggplot(data = peel, aes(x = population, y = true_sugar_bx)) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  xlab("Urbanisation level") + ylab("Peel soluble carbohydrate content (?Bx)") +
+  geom_text(data = data.frame(x = 1:3, y = c(5, 8.7, 8)), 
+            aes(x = x, y = y, label = c("a", "b", "b"))) + theme_bw()
+  
+ggarrange(crop, diam, seedn, pulp_bx, peel_bx, nrow = 3, ncol = 2)
+```
+
+\
+
+## Relationship between urbanisation and bird-mediated selection using pieciewise structural equation models
+
+```{r sems}
+plants <- read.table("C:/RD/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
+plants$population <- as.factor(plants$population)
+
+plants <- na.omit(plants[, c(1, 4:6, 8:9, 11)])
+
+### Raw estimates assuming different error distributions
+# M1. Influence of urbanisation on bird visitation
+M1 <- psem(
+  # Influence of urbanisation on fruit traits
+  glm.nb(crop ~ population, data = plants), 
+  lm(x.diam ~ population, data = plants), 
+  lm(x.nseeds ~ population, data = plants),
+  lm(x.peel.sugar ~ population + crop, data = plants), 
+  
+  # Fruit traits and fitness
+  glm(visits ~ population + crop + x.diam + x.nseeds + x.peel.sugar,
+         family = poisson, data = plants),
+  
+  # Correlation between fitness measures
+  fruit_rem %~~% visits,
+  
+  # Fruit trait correlations
+  x.nseeds %~~% x.diam
+)
+
+resM1 <- summary(M1, direction = c("x.nseeds <- crop"))
+
+# M2. Influence of urbanization on fruit removal
+M2 <- psem(
+  # Influence of urbanization on fruit traits
+  glm.nb(crop ~ population, data = plants), 
+  lm(x.diam ~ population, data = plants), 
+  lm(x.nseeds ~ population, data = plants),
+  lm(x.peel.sugar ~ population + crop, data = plants), 
+  
+  # Fruit traits and fitness
+  glm(visits ~ population + crop + x.diam + x.nseeds + x.peel.sugar, 
+      family = poisson, data = plants),
+  
+  # New paths: influence of fruit traits and urbanization on fruit removal
+  glm.nb(fruit_rem ~ population + crop + x.diam + x.nseeds + x.peel.sugar, 
+         data = plants),
+  
+  # Correlation between fitness measures
+  fruit_rem %~~% visits,
+  
+  # Fruit trait correlations
+  x.nseeds %~~% x.diam
+)
+  
+resM2 <- summary(M2, direction = c("x.nseeds <- crop"))
+
+
+# M3. Visits are influenced by fruit traits rather than by urbanisation,fruit removal is not influenced by urbanisation
+M3 <- psem(
+  # Influence of urbanisation on fruit traits
+  glm.nb(crop ~ population, data = plants), 
+  lm(x.diam ~ population, data = plants), 
+  lm(x.nseeds ~ population, data = plants),
+  lm(x.peel.sugar ~ population + crop, data = plants), 
+  
+  # Fruit traits and fitness
+  glm(visits ~ crop + x.diam + x.nseeds + x.peel.sugar, 
+      family = poisson, data = plants),
+  
+  # Correlation between fitness measures
+  fruit_rem %~~% visits,
+  
+  # Fruit trait correlations
+  x.nseeds %~~% x.diam)
+
+resM3 <- summary(M3, direction = c("x.nseeds <- crop"))
+
+# Model comparison
+resM1$IC[2]
+resM2$IC[2]
+resM3$IC[2]
+
+# Multigroup model (interaction)
+M3multi <- psem(
+    lm(x.peel.sugar ~ crop, data = plants), 
+  
+  # Fruit traits and fitness
+  glm(visits ~ crop + x.diam + x.nseeds + x.peel.sugar, 
+      family = poisson, data = plants),
+  
+  # Correlation between fitness measures
+  fruit_rem %~~% visits,
+  
+  # Fruit trait correlations
+  x.nseeds %~~% x.diam)
+
+M3multigroup <- multigroup(M3multi, group = "population")
+M3multigroup
+```
+
+\
+
+### Estimate selection gradients from the structural equation
+```{r sem gradients}
+zdata <- na.omit(data.frame(population = plants$population,
+                            zcrop = scale(plants$crop),
+                            zdiam = scale(plants$x.diam),
+                            znseeds = scale(plants$x.nseeds),
+                            zpeel.sugar = scale(plants$x.peel.sugar),
+                            wvisits = plants$visits/mean(plants$fruit_rem),
+                            wfruit_rem = plants$fruit_rem/mean(plants$fruit_rem)))
+
+M3 <- psem(
+  # Influence of urbanization on fruit traits
+  lm(zcrop ~ population, data = zdata), 
+  lm(zdiam ~ population, data = zdata), 
+  lm(znseeds ~ population, data = zdata),
+  lm(zpeel.sugar ~ population + zcrop, data = zdata), 
+  
+  # Fruit traits and fitness
+  lm(wvisits ~ zcrop + zdiam + znseeds + zpeel.sugar, data = zdata),
+  
+  # Correlation between fitness measures
+  wfruit_rem %~~% wvisits,
+  
+  # Fruit trait correlations
+  znseeds %~~% zdiam)
+
+resM3 <- summary(M3)
+resM3
+```
+
+\
+
+## Natural selection analysis
+### Opportunity for selection $I = \sigma^{2}_{w}$
+```{r selection}
+plants <- read.table("C:/RD/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
+plants$population <- as.factor(plants$population)
+
+plants %>% group_by(population) %>% summarise(Wfruit_removal = mean(fruit_rem),
+                                              Wvisits = mean(visits),
+                                              Ifruit_removal = var(fruit_rem/mean(fruit_rem)),
+                                              Ivisits = var(visits/mean(visits)),
+                                              n_plants = n(),
+                                              sdIfruit_removal = Ifruit_removal/(2*n_plants),
+                                              sdIvisits = Ivisits/(2*n_plants)) %>% 
+  knitr::kable(., caption = "Opportunity for selection", digits = 2)
+```
+
+### Estimation of selection gradients
+What follows is a function called `grad`, which computes selection gradients for a set of traits and populations based on bootstrap samples. For this function, the data must have the population identifier in the first column, the fitness in the second column, and the phenotypic traits in the remaining columns. The function returns a vector with linear, quadratic and correlational gradients, and represents the input for the function `boot` of the `boot` package. 
+```{r gradients}
+grad <- function(data, original = c(1:nrow(data))){
+  data <- data[original, ] # for boot function
+  traits  <- colnames(data)[-c(1:2)]
+  z <- scale(data[, traits]) # standardise traits
+  Wrel <- data[, 2]/mean(data[, 2]) # relative fitness
+  df <- data.frame(z, Wrel)
+  # linear gradients
+  model.lin <- as.formula(paste("Wrel", paste(traits, collapse = " + "), sep = " ~ "))
+  m1 <- lm(formula = model.lin, data = df)
+  # nonlinear gradients
+  part1 <- paste("(", paste(traits, collapse = " + "), ")^2", sep = "")
+  part2 <- paste("I(0.5*(", traits, "^2))", sep = "", collapse = " + ")
+  model.qua <- as.formula <- paste("Wrel", paste(part1, part2, sep = " + "), sep = " ~ ")
+  m2 <- lm(formula = model.qua, data = df)
+  
+  sel.grad <- c(m1$coefficients[-1], m2$coefficients[-c(1:ncol(df))])
+  return(sel.grad)
+}
+
+# Select traits
+df <- plants[, c("population", "fruit_rem", "crop", "x.diam", "x.nseeds", "x.peel.sugar")]
+idpop <- unique(df[, 1])
+pops <- split(df, df[, 1])
+npops <- length(pops)
+sel.grad.pops <- list()
+
+# Compute selection gradients for each population
+for(i in 1:npops){
+  data_pop <- subset(df, df[, 1] == idpop[i])
+  sel.grad.pops[[i]] <- grad(data = data_pop)
+}
+
+population <- unique(plants$population)
+names(sel.grad.pops) <- population
+as.data.frame(sel.grad.pops) %>% knitr::kable(., digits = 2, caption = "Selection gradients")
+
+# Confidence intervals for selection gradients based on bootstrap samples
+set.seed(999)
+nsamples <- 1000
+boot.grad <- list()
+
+for(i in 1:npops){
+  data_pop <- subset(df, df[, 1] == idpop[i])
+  boot.replicates <- boot(data = data_pop, statistic = grad, R = nsamples)
+  
+  # Confidence intervals
+  CI <- list()
+  ngrad <- length(boot.replicates$t0)
+  for(j in 1:ngrad){
+    CI[[j]] <- boot.ci(boot.replicates, conf = 0.95, type = "bca", index = j)$bca[4:5]
+  }
+ 
+  names(CI) <- names(boot.replicates$t0)
+  
+  # Table of gradients, standard errors, confidence intervals and p-values
+  boot.grad[[i]] <- data.frame(gradient = boot.replicates$t0, 
+                               se = apply(boot.replicates$t, 2, sd, na.rm = TRUE),
+                               low.CI = as.numeric(t(as.data.frame(CI)[1, ])),
+                               upp.CI = as.numeric(t(as.data.frame(CI)[2, ])),
+                               p = apply(boot.replicates$t, 2, function(x) ifelse(mean(x, na.rm = T)>0, length(x[x<0])/nsamples, length(x[x>0])/nsamples)))
+}
+
+names(boot.grad) <- idpop
+boot.grad %>% knitr::kable(., digits = 2, Caption = "Selection gradients and uncertainty based on bootstrap samples")
+
+# Pepare gradients for plotting
+boot_results <- do.call("rbind", boot.grad)
+ngrad <- nrow(boot.grad[[1]])
+boot_results$population <- sub("\\..*", "", rownames(boot_results))
+boot_results$grad_type <- rep(c(rep("linear", 4), rep("nonlinear", 10)), npops)
+traits  <- colnames(df)[-c(1:2)]
+boot_results$trait <- rep(c(rep(traits, 2), 
+                            paste(traits[1], traits[2]),
+                            paste(traits[1], traits[3]),
+                            paste(traits[1], traits[4]),
+                            paste(traits[2], traits[3]),
+                            paste(traits[2], traits[4]),
+                            paste(traits[3], traits[4])), npops)
+
+# Plot linear gradients
+linear_results <- subset(boot_results, grad_type == "linear")
+ggplot(data = linear_results, aes(x = population, y = gradient, col = trait)) +
+  geom_point(position = position_dodge(0.5), size = 3) +
+  geom_errorbar(aes(ymin = low.CI, ymax = upp.CI), width = 0, position = position_dodge(0.5)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Population") + ylab("Linear gradient") + theme_bw()
+
+# Plot nonlinear gradients
+nonlinear_results <- subset(boot_results, grad_type == "nonlinear")
+ggplot(data = nonlinear_results, aes(x = population, y = gradient, col = trait)) +
+  geom_point(position = position_dodge(0.5), size = 3) +
+  geom_errorbar(aes(ymin = low.CI, ymax = upp.CI), 
+                width = 0, position = position_dodge(0.5)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Population") + ylab("Nonlinear gradient") + ylim(-3, 3) + theme_bw()
+
+# Non-linear selection on fruit crop size in the semi-urban population
+semiu <- subset(plants, population == "semiurban")
+semiu$zcrop <- as.numeric(scale(semiu$crop))
+semiu$zdiam <- as.numeric(scale(semiu$x.diam))
+semiu$zseeds <- as.numeric(scale(semiu$x.nseeds))
+semiu$zpeel <- as.numeric(scale(semiu$x.peel.sugar))
+semiu$wrel <- semiu$fruit_rem/mean(semiu$fruit_rem, na.rm=T)
+nonlin.grad <- lm(wrel ~ zcrop + I(0.5*zcrop^2) + zdiam + I(0.5*zdiam^2) + zseeds + I(0.5*zseeds^2) + zpeel + I(0.5*zpeel^2) + zcrop:zdiam + zcrop:zseeds + zcrop:zpeel + zdiam:zseeds + zdiam:zpeel + zseeds:zpeel, data = semiu)
+
+df <- data.frame(zcrop = seq(-1, 4, length = 500), zdiam = 0, zseeds = 0, zpeel = 0)
+pred_fitness <- data.frame(zcrop = seq(-1, 4, length = 500), 
+                           wrel = predict(quad.grad, newdata = df))
+
+ggplot() + 
+geom_point(data = semiu, aes(x = zcrop, y = wrel), size = 5) +
+geom_line(data = pred_fitness, aes(x = zcrop, y = wrel), col = "blue", lwd = 1.5) +
+xlab("Standardised fruit crop size") + 
+ylab("Relative fitness (number of pecked fruits)") +
+theme_bw()
+
+visreg2d(nonlin.grad, xvar = "zcrop", yvar = "zpeel", type = "conditional", cond = list(zdiam = 0, zseeds = 0, zpeel = 0), xlab = "Standardised fruit crop size", main = "Semi-urban population", ylab = "Standardised peel soluble carbohydrate concentration")
+points(semiu$zcrop, semiu$zpeel, pch = 19, cex = 2)
+```
+
