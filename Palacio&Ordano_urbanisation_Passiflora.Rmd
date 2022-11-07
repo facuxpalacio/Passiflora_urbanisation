@@ -1,5 +1,5 @@
 ---
-title: "Urbanisation weakens phenotypic selection but enhances the adaptive potential of fruit traits in a seed-dispersal mutualism"
+title: "Urbanisation shapes phenotypic selection of fruit traits in a seed-dispersal mutualism"
 subtitle: "Supplementary material"
 author: 'Code author: Facundo X. Palacio'
 date: "`r Sys.Date()`"
@@ -24,20 +24,20 @@ library(plyr) # Data management
 library(dplyr) # Data management
 library(tidyr) # Data management
 library(corrr) # Computing correlations
-library(ggraph) # Plotting graphs
-library(igraph) # Plotting graphs
+library(ggraph) # Plots
+library(igraph) # Plots
 library(lme4) # Fitting mixed models
 library(lmerTest) # Adding p-values in mixed models
 library(multcomp) # Computing multiple comparisons
 library(MASS) # Fitting negative binomial models
 library(ggplot2) # Plotting
 library(ggpubr) # Arranging multiple panels in the same plot
-library(piecewiseSEM) # Structural equations
 library(MVN) # Multivariate normality tests
-library(car) # Variance inflation factors
+library(piecewiseSEM) # Structural equations
+library(fields) # Plotting fitness surfaces
+library(mgcv) # Fitness landscapes
 library(boot) # Bootstrapping
-library(visreg) # Plotting fitness surface
-library(evolqg) # Simulating G-matrices and computing evolvability
+library(vegan) # Permanova
 ```
 
 \
@@ -145,7 +145,6 @@ summary(multpeel)
 \
 
 ## Boxplots of fruit and seed traits along with mixed model p-values
-
 ```{r boxplots}
 crop <- ggplot(data = plants, aes(x = population, y = crop)) +
   geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
@@ -193,7 +192,6 @@ ggarrange(crop, diam, seedn, pulp_bx, peel_bx, nrow = 3, ncol = 2)
 \
 
 ## Relationship between urbanisation and bird-mediated selection using pieciewise structural equation models
-
 ```{r sems}
 plants <- read.table("data/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
 plants$population <- as.factor(plants$population)
@@ -332,13 +330,10 @@ resM3
 plants <- read.table("data/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
 plants$population <- as.factor(plants$population)
 
-plants %>% group_by(population) %>% summarise(Wfruit_removal = mean(visits),
-                                              Wvisits = mean(visits),
+plants %>% group_by(population) %>% summarise(Wfruit_removal = mean(fruit_rem),
                                               Ifruit_removal = var(fruit_rem/mean(fruit_rem)),
-                                              Ivisits = var(visits/mean(visits)),
                                               n_plants = dplyr::n(),
-                                              sdIfruit_removal = Ifruit_removal/(2*n_plants),
-                                              sdIvisits = Ivisits/(2*n_plants)) %>% 
+                                              sdIfruit_removal = Ifruit_removal/(2*n_plants)) %>% 
   knitr::kable(., caption = "Opportunity for selection", digits = 2)
 ```
 
@@ -349,10 +344,10 @@ semiurban <- subset(plants, population == "semiurban")
 rural <- subset(plants, population == "rural")
 
 # Urban
-urban$Wurb <- urban$fruit_rem
-urban$wrel <- urban$Wurb/mean(urban$Wurb)
+urban$W <- urban$fruit_rem
+urban$wrel <- urban$W/mean(urban$W)
 
-urban$x1 <- urban$crop
+urban$x1 <- log(urban$crop)
 urban$x2 <- urban$x.diam
 urban$x3 <- urban$x.nseeds
 urban$x4 <- urban$x.peel.sugar
@@ -363,10 +358,10 @@ urban$z3 <- (urban$x3 - mean(urban$x3, na.rm =T))/sd(urban$x3, na.rm =T)
 urban$z4 <- (urban$x4 - mean(urban$x4, na.rm =T))/sd(urban$x4, na.rm =T)
 
 # Semiurban
-semiurban$Wsemiu <- semiurban$fruit_rem
-semiurban$wrel <- semiurban$Wsemiu/mean(semiurban$Wsemiu)
+semiurban$W <- semiurban$fruit_rem
+semiurban$wrel <- semiurban$W/mean(semiurban$W)
 
-semiurban$x1 <- semiurban$crop
+semiurban$x1 <- log(semiurban$crop)
 semiurban$x2 <- semiurban$x.diam
 semiurban$x3 <- semiurban$x.nseeds
 semiurban$x4<- semiurban$x.peel.sugar
@@ -377,18 +372,18 @@ semiurban$z3 <- (semiurban$x3 - mean(semiurban$x3, na.rm =T))/sd(semiurban$x3, n
 semiurban$z4 <- (semiurban$x4 - mean(semiurban$x4, na.rm =T))/sd(semiurban$x4, na.rm =T)
 
 # Rural
-rural$Wrur <- rural$fruit_rem
-rural$wrel <- rural$Wrur/mean(rural$Wrur)
+rural$W <- rural$fruit_rem
+rural$wrel <- rural$W/mean(rural$W)
 
-rural$x1 <- rural$crop
+rural$x1 <- log(rural$crop)
 rural$x2 <- rural$x.diam
 rural$x3 <- rural$x.nseeds
 rural$x4 <- rural$x.peel.sugar
 
-rural$z1 <- (rural$x1 - mean(rural$x1, na.rm =T))/sd(rural$x1, na.rm =T)
-rural$z2 <- (rural$x2 - mean(rural$x2, na.rm =T))/sd(rural$x2, na.rm =T)
-rural$z3 <- (rural$x3 - mean(rural$x3, na.rm =T))/sd(rural$x3, na.rm =T)
-rural$z4 <- (rural$x4 - mean(rural$x4, na.rm =T))/sd(rural$x4, na.rm =T)
+rural$z1 <- (rural$x1 - mean(rural$x1, na.rm = T))/sd(rural$x1, na.rm =T)
+rural$z2 <- (rural$x2 - mean(rural$x2, na.rm = T))/sd(rural$x2, na.rm =T)
+rural$z3 <- (rural$x3 - mean(rural$x3, na.rm = T))/sd(rural$x3, na.rm =T)
+rural$z4 <- (rural$x4 - mean(rural$x4, na.rm = T))/sd(rural$x4, na.rm =T)
 ```
 
 #### Step 2. Testing multivariate normality of phenotypic traits
@@ -410,9 +405,8 @@ ggplot(data = urban, aes(x = z4)) + xlim(-4, 4) +
   geom_histogram(aes(y = ..density..), col = "black", fill = "gray", binwidth = 0.5, alpha = 0.5) +  
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
-  # Multivariate normality tests
+  # Multivariate normality test
 mvn(data.frame(urban$z1, urban$z2, urban$z3, urban$z4), mvnTest = "hz")$multivariateNormality
-mvn(data.frame(urban$z1, urban$z2, urban$z3, urban$z4), mvnTest = "royston")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -443,9 +437,8 @@ ggplot(data = semiurban, aes(x = z4)) + xlim(-4, 4) +
   geom_histogram(aes(y = ..density..), col = "black", fill = "gray", binwidth = 0.5, alpha = 0.5) +  
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
-  # Multivariate normality tests
+  # Multivariate normality test
 mvn(data.frame(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), mvnTest = "hz")$multivariateNormality
-mvn(data.frame(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), mvnTest = "royston")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -476,9 +469,8 @@ ggplot(data = rural, aes(x = z4)) + xlim(-4, 4) +
   geom_histogram(aes(y = ..density..), col = "black", fill = "gray", binwidth = 0.5, alpha = 0.5) +  
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
-  # Multivariate normality tests
+  # Multivariate normality test
 mvn(data.frame(rural$z1, rural$z2, rural$z3, rural$z4), mvnTest = "hz")$multivariateNormality
-mvn(data.frame(rural$z1, rural$z2, rural$z3, rural$z4), mvnTest = "royston")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -499,377 +491,236 @@ layout(1)
 cor(cbind(urban$z1, urban$z2, urban$z3, urban$z4), use = "complete.obs")
 cor(cbind(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), use = "complete.obs")
 cor(cbind(rural$z1, rural$z2, rural$z3, rural$z4), use = "complete.obs")
-
-  # Variance inflation factor on (linear) Lande and Arnold's model
-lin.grad_urb <- lm(wrel ~ z1 + z2 + z3 + z4, data = urban)
-nonlin.grad_urb <- lm(wrel ~ z1 + z2 + z3 + z4 + I((1/2)*z1^2) + I((1/2)*z2^2) + I((1/2)*z3^2) + I((1/2)*z4^2) + z1:z2 + z1:z3 + z1:z4 + z2:z3 + z3:z4, data = urban)
-
-lin.grad_semiu <- lm(wrel ~ z1 + z2 + z3 + z4, data = semiurban)
-nonlin.grad_semiu <- lm(wrel ~ z1 + z2 + z3 + z4 + I((1/2)*z1^2) + I((1/2)*z2^2) + I((1/2)*z3^2) + I((1/2)*z4^2) + z1:z2 + z1:z3 + z1:z4 + z2:z3 + z3:z4, data = semiurban)
-
-lin.grad_rur <- lm(wrel ~ z1 + z2 + z3 + z4, data = rural)
-nonlin.grad_rur <- lm(wrel ~ z1 + z2 + z3 + z4 + I((1/2)*z1^2) + I((1/2)*z2^2) + I((1/2)*z3^2) + I((1/2)*z4^2) + z1:z2 + z1:z3 + z1:z4 + z2:z3 + z3:z4, data = rural)
-
-vif(lin.grad_urb)
-vif(lin.grad_semiu)
-vif(lin.grad_rur)
 ```
 
-```{r residuals}
-### Step 4. Checking model residuals
-   # Shapiro test
-shapiro.test(resid(lin.grad_urb))
-shapiro.test(resid(nonlin.grad_urb))
-shapiro.test(resid(lin.grad_semiu))
-shapiro.test(resid(nonlin.grad_semiu))
-shapiro.test(resid(lin.grad_rur))
-shapiro.test(resid(nonlin.grad_rur))
-
-   # Q-Q plots
-layout(matrix(1:2, 1, 2))
-qqnorm(resid(lin.grad_urb), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Linear gradient model. Urban population")
-qqline(resid(lin.grad_urb), col = "red", lwd = 2)
-qqnorm(resid(nonlin.grad_urb), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Nonlinear gradient model. Urban population")
-qqline(resid(nonlin.grad_urb), col = "red", lwd = 2) 
-
-  # Q-Q plots
-qqnorm(resid(lin.grad_semiu), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Linear gradient model. Semiurban population")
-qqline(resid(lin.grad_semiu), col = "red", lwd = 2)
-qqnorm(resid(nonlin.grad_semiu), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Nonlinear gradient model. Semiurban population")
-qqline(resid(nonlin.grad_semiu), col = "red", lwd = 2) 
-
-  # Q-Q plots
-qqnorm(resid(lin.grad_rur), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Linear gradient model. Rural population")
-qqline(resid(lin.grad_rur), col = "red", lwd = 2)
-qqnorm(resid(nonlin.grad_rur), cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, alpha = 0.3), main = "Nonlinear gradient model. Rural population")
-qqline(resid(nonlin.grad_rur), col = "red", lwd = 2) 
-layout(1)
-```
-
-### Step 5. Estimation of selection gradients
-What follows is a function called `grad`, which computes selection gradients for a set of traits and populations based on bootstrap samples. For this function, the data must have the population identifier in the first column, the fitness in the second column, and the phenotypic traits in the remaining columns. The function returns a vector with linear, quadratic and correlational gradients, and represents the input for the function `boot` of the `boot` package. 
+### Step 4. Estimation of selection gradients, standard errors and credible intervals using MCMC
+What follows is the code from Morrissey & Goudie (2022) Evolution 76-7:1378–1390 to estimate gradients from log-linear models.
 ```{r gradients}
-grad <- function(data, original = c(1:nrow(data))){
-  data <- data[original, ] # for boot function
-  traits  <- colnames(data)[-c(1:2)]
-  z <- scale(data[, traits]) # standardise traits
-  Wrel <- data[, 2]/mean(data[, 2]) # relative fitness
-  df <- data.frame(z, Wrel)
-  # linear gradients
-  model.lin <- as.formula(paste("Wrel", paste(traits, collapse = " + "), sep = " ~ "))
-  m1 <- lm(formula = model.lin, data = df)
-  # nonlinear gradients
-  part1 <- paste("(", paste(traits, collapse = " + "), ")^2", sep = "")
-  part2 <- paste("I(0.5*(", traits, "^2))", sep = "", collapse = " + ")
-  model.qua <- as.formula <- paste("Wrel", paste(part1, part2, sep = " + "), sep = " ~ ")
-  m2 <- lm(formula = model.qua, data = df)
-  
-  sel.grad <- c(m1$coefficients[-1], m2$coefficients[-c(1:ncol(df))])
-  return(sel.grad)
+v <- function (m){m[lower.tri(m,diag=TRUE)]}
+
+make.formula <- function (z, W = "W"){
+  p<-length(z)
+  iInd<-v(matrix(1:p,p,p,byrow=FALSE))
+  jInd<-v(matrix(1:p,p,p,byrow=TRUE))
+  terms<-array(dim=2*p+(p^2-p)/2)
+  terms[1:p]<-z
+    for (i in 1:(p+(p^2-p)/2)){
+      if (iInd[i]==jInd[i]){
+        terms[p+i]<-paste("I(0.5*",z[iInd[i]],"*",z[jInd[i]],")",sep="")
+        } else {
+          terms[p+i]<-paste("I(",z[iInd[i]],"*",z[jInd[i]],")",sep="")
+        }
+      }
+  terms<-paste(terms,collapse="+")
+  paste(W,"~",terms,sep="")
 }
 
-# Select traits
-df <- plants[, c("population", "fruit_rem", "crop", "x.diam", "x.nseeds", "x.peel.sugar")]
-idpop <- unique(df[, 1])
-pops <- split(df, df[, 1])
-npops <- length(pops)
-sel.grad.pops <- list()
-
-# Compute selection gradients for each population
-for(i in 1:npops){
-  data_pop <- subset(df, df[, 1] == idpop[i])
-  sel.grad.pops[[i]] <- grad(data = data_pop)
+make.g<- function (gij,p,Sigma,warn=FALSE){
+  g<-matrix(NA,p,p)
+  g[lower.tri(g,diag=TRUE)]<-gij
+  g[upper.tri(g)]<-t(g)[upper.tri(t(g))]
+  if (warn){
+    if (is.positive.definite(solve(Sigma)-g)==FALSE){
+      print("Warning: Omega is not positive-definite.")
+    }
+    }
+  g
 }
 
-population <- unique(plants$population)
-names(sel.grad.pops) <- population
-as.data.frame(sel.grad.pops) %>% knitr::kable(., digits = 2, caption = "Selection gradients")
+# Function to estimate linear gradients
+beta<- function (b,gij,mu,Sigma){
+  p<-length(b)
+  g<-make.g(gij=gij,p=p,Sigma=Sigma)
+  tildeb<-b+g%*%mu
+  Phi<-diag(p)-g%*%Sigma
+  solve(Phi)%*%tildeb
+}
 
-# Confidence intervals for selection gradients based on bootstrap samples
-set.seed(999)
-nsamples <- 1000
-boot.raw <- list()
-boot.grad <- list()
+# Function to estimate nonlinear gradients
+gamma<- function (b,gij,mu,Sigma){
+  p<-length(b)
+  g<-make.g(gij=gij,p=p,Sigma=Sigma)
+  tildeb<-b+g%*%mu
+  Phi<-diag(p)-g%*%Sigma
+  beta<-solve(Phi)%*%tildeb
+  beta %*% t(beta) + solve(Phi)%*% g
+}
 
-for(i in 1:npops){
-  data_pop <- subset(df, df[, 1] == idpop[i])
-  boot.replicates <- boot(data = data_pop, statistic = grad, R = nsamples)
+# Function to compute gradients and their standard errors
+grads<- function (b,gij,mu,Sigma,vcov,returnCov=FALSE){
+  beta_hat<-beta(b,gij,mu,Sigma)
+  gamma_hat<-gamma(b,gij,mu,Sigma)
+  p<-length(b)
+  s<-p+(p^2-p)/2
+  phi<-diag(p)-make.g(gij,p)%*%Sigma
+  Q<-solve(phi)
+  iInd<-v(matrix(1:p,p,p,byrow=FALSE))
+  jInd<-v(matrix(1:p,p,p,byrow=TRUE))
+  J12<-matrix(0,p,s)
   
-  # Confidence intervals
-  CI <- list()
-  ngrad <- length(boot.replicates$t0)
-  for(j in 1:ngrad){
-    CI[[j]] <- boot.ci(boot.replicates, conf = 0.95, type = "bca", index = j)$bca[4:5]
+  for (m in 1:s){
+  e<-matrix(0,s,1); e[m,1]<-1;
+  C<-matrix(0,p,p);
+  C[iInd[m],jInd[m]]<-1
+  C[jInd[m],iInd[m]]<-1
+  J12<-J12+Q%*%C%*%(Sigma%*%beta_hat+mu)%*%t(e)
   }
- 
-  names(CI) <- names(boot.replicates$t0)
+  J21<-matrix(0,s,p)
   
-  # Bootstrap replicates
-  boot.raw[[i]] <- boot.replicates
+  for (k in 1:p){
+  e<-matrix(0,p,1); e[k,1]<-1;
+  J21<-J21+ v(beta_hat%*%t(Q[,k])+Q[,k]%*%t(beta_hat))%*%t(e)
+  }
+  J22<-matrix(0,s,s)
   
-  # Table of gradients, standard errors, confidence intervals and p-values
-  boot.grad[[i]] <- data.frame(gradient = boot.replicates$t0, 
-                               se = apply(boot.replicates$t, 2, sd, na.rm = TRUE),
-                               low.CI = as.numeric(t(as.data.frame(CI)[1, ])),
-                               upp.CI = as.numeric(t(as.data.frame(CI)[2, ])),
-                               p = apply(boot.replicates$t, 2, function(x) ifelse(mean(x, na.rm = T)>0, length(x[x<0])/nsamples, length(x[x>0])/nsamples)))
+  for (m in 1:s){
+    e<-matrix(0,s,1); e[m,1]<-1;
+    C<-matrix(0,k,k);
+  C[iInd[m],jInd[m]]<-1
+  C[jInd[m],iInd[m]]<-1
+  M<-Q%*%C%*%(Sigma%*%beta_hat+mu)%*%t(beta_hat)
+  J22<-J22+v(M+t(M)+Q%*%C%*%t(Q))%*%t(e)
+  }
+  
+  J<-matrix(NA,k+s,k+s)
+  J[1:p,1:p]<-Q
+  J[1:p,(p+1):(p+s)]<-J12
+  J[(p+1):(p+s),1:p]<-J21
+  J[(p+1):(p+s),(p+1):(p+s)]<-J22
+  
+  SEs<-sqrt(diag(J %*% vcov %*% t(J)))
+  coef.names<-c(paste("beta",1:p),paste("gamma",iInd,jInd))
+  res<-as.data.frame(cbind(coef.names,
+  c(beta_hat,gamma_hat[lower.tri(gamma_hat,diag=TRUE)]),SEs))
+  names(res)<-c("selection gradient","estimate","SE")
+  res[,2]<-as.numeric(as.character(res[,2]))
+  res[,3]<-as.numeric(as.character(res[,3]))
+  if (returnCov==TRUE) res<-list(grads=res,vcov=J %*% vcov %*% t(J))
+  return(res)
 }
 
-names(boot.grad) <- idpop
-boot.grad %>% knitr::kable(., digits = 2, Caption = "Selection gradients and uncertainty based on bootstrap samples")
+# Vector mean and variance-covariance matrix of traits
+mu <- rep(0, 4)
+Sigma_urb <- cov(na.omit(urban[, c("z1", "z2", "z3", "z4")]))
+Sigma_semiu <- cov(na.omit(semiurban[, c("z1", "z2", "z3", "z4")]))
+Sigma_rur <- cov(na.omit(rural[, c("z1", "z2", "z3", "z4")]))
 
-# Pepare gradients for plotting
-boot_results <- do.call("rbind", boot.grad)
-ngrad <- nrow(boot.grad[[1]])
-boot_results$population <- sub("\\..*", "", rownames(boot_results))
-boot_results$grad_type <- rep(c(rep("linear", 4), rep("nonlinear", 10)), npops)
-traits  <- colnames(df)[-c(1:2)]
-boot_results$trait <- rep(c(rep(traits, 2), 
-                            paste(traits[1], traits[2]),
-                            paste(traits[1], traits[3]),
-                            paste(traits[1], traits[4]),
-                            paste(traits[2], traits[3]),
-                            paste(traits[2], traits[4]),
-                            paste(traits[3], traits[4])), npops)
+# Poisson generalized linear models for each population
+f <- make.formula(W = "W", z = c("z1", "z2", "z3", "z4"))
+mod_urb <- glm(as.formula(f), data = urban, family = "quasipoisson")
+mod_semiu <- glm(as.formula(f), data = semiurban, family = "quasipoisson")
+mod_rur <- glm(as.formula(f), data = rural, family = "poisson")
 
-# Plot linear gradients
-linear_results <- subset(boot_results, grad_type == "linear")
-ggplot(data = linear_results, aes(x = population, y = gradient, col = trait)) +
-  geom_point(position = position_dodge(0.5), size = 3) +
-  geom_errorbar(aes(ymin = low.CI, ymax = upp.CI), width = 0, position = position_dodge(0.5)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  xlab("Population") + ylab("Linear gradient") + theme_bw()
+# Coefficients of the GLM
+b_urb <- coef(mod_urb)[2:5]
+gij_urb <- coef(mod_urb)[6:15]
 
-# Plot nonlinear gradients
-nonlinear_results <- subset(boot_results, grad_type == "nonlinear")
-ggplot(data = nonlinear_results, aes(x = population, y = gradient, col = trait)) +
-  geom_point(position = position_dodge(0.5), size = 3) +
-  geom_errorbar(aes(ymin = low.CI, ymax = upp.CI), 
-                width = 0, position = position_dodge(0.5)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  xlab("Population") + ylab("Nonlinear gradient") + ylim(-3, 3) + theme_bw()
+b_semiu <- coef(mod_semiu)[2:5]
+gij_semiu <- coef(mod_semiu)[6:15]
 
-# Non-linear selection on fruit crop size in the semi-urban population
-semiu <- subset(plants, population == "semiurban")
-semiu$zcrop <- as.numeric(scale(semiu$crop))
-semiu$zdiam <- as.numeric(scale(semiu$x.diam))
-semiu$zseeds <- as.numeric(scale(semiu$x.nseeds))
-semiu$zpeel <- as.numeric(scale(semiu$x.peel.sugar))
-semiu$wrel <- semiu$fruit_rem/mean(semiu$fruit_rem, na.rm=T)
-nonlin.grad <- lm(wrel ~ zcrop + I(0.5*zcrop^2) + zdiam + I(0.5*zdiam^2) + zseeds + I(0.5*zseeds^2) + zpeel + I(0.5*zpeel^2) + zcrop:zdiam + zcrop:zseeds + zcrop:zpeel + zdiam:zseeds + zdiam:zpeel + zseeds:zpeel, data = semiu)
+b_rur <- coef(mod_rur)[2:5]
+gij_rur <- coef(mod_rur)[6:15]
 
-df <- data.frame(zcrop = seq(-1, 4, length = 500), zdiam = 0, zseeds = 0, zpeel = 0)
-pred_fitness <- data.frame(zcrop = seq(-1, 4, length = 500), 
-                           wrel = predict(nonlin.grad, newdata = df))
+# Error variance-covariance matrix of the b and gij terms
+sampVar_urb <- vcov(mod_urb)[2:15, 2:15]
+sampVar_semiu <- vcov(mod_semiu)[2:15, 2:15]
+sampVar_rur <- vcov(mod_rur)[2:15, 2:15]
 
-ggplot() + 
-geom_point(data = semiu, aes(x = zcrop, y = wrel), size = 5) +
-geom_line(data = pred_fitness, aes(x = zcrop, y = wrel), col = "blue", lwd = 1.5) +
-xlab("Standardised fruit crop size") + 
-ylab("Relative fitness (number of pecked fruits)") +
-theme_bw()
+# Selection gradients, standard errors and p-values
+gradients_urb <- grads(b_urb, gij_urb, mu, Sigma_urb, sampVar_urb)
+gradients_urb %>% mutate(p = summary(mod_urb)$coeff[-1, 4]) %>%
+knitr::kable(., digits = 3, caption = "Selection gradients of the urban population")
 
-visreg2d(nonlin.grad, xvar = "zcrop", yvar = "zpeel", type = "conditional", cond = list(zdiam = 0, zseeds = 0, zpeel = 0), xlab = "Standardised fruit crop size", main = "Semi-urban population", ylab = "Standardised peel soluble carbohydrate concentration")
-points(semiu$zcrop, semiu$zpeel, pch = 19, cex = 2)
-```
+gradients_semiu <- grads(b_semiu, gij_semiu, mu, Sigma_semiu, sampVar_semiu)
+gradients_semiu %>% mutate(p = summary(mod_semiu)$coeff[-1, 4]) %>%
+knitr::kable(., digits = 3, caption = "Selection gradients of the semiurban population")
 
-\
+gradients_rur <- grads(b_rur, gij_rur, mu, Sigma_rur, sampVar_rur)
+gradients_rur %>% mutate(p = summary(mod_rur)$coeff[-1, 4]) %>%
+knitr::kable(., digits = 3, caption = "Selection gradients of the rural population")
 
-## Evolutionary trajectory and evolvability 
-### Slope of the adaptive landscape (directional selection gradients)
-```{r slope}
-# Estimate the slope of the adaptive landscape for each population (beta)
-plants <- read.table("data/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
-plants$population <- as.factor(plants$population)
-
-urban_boot <- subset(boot_results, population == "urban")
-semiurban_boot <- subset(boot_results, population == "semiurban")
-rural_boot <- subset(boot_results, population == "rural")
-beta_urb <- subset(urban_boot, grad_type == "linear")$gradient
-beta_semiu <- subset(semiurban_boot, grad_type == "linear")$gradient
-beta_rur <- subset(rural_boot, grad_type == "linear")$gradient
-```
-
-### Curvature of the adaptive landscape (indirect effects of selection on the G-matrix)
-```{r curvature}
-# Curvature estimates
-ntraits <- length(beta_urb)
-gamma_urb <- matrix(0, nrow = ntraits, ncol = ntraits)
-gamma_semiu <- matrix(0, nrow = ntraits, ncol = ntraits)
-gamma_rur <- matrix(0, nrow = ntraits, ncol = ntraits)
-
-diag(gamma_urb) <- urban_boot$gradient[5:8]
-diag(gamma_semiu) <- semiurban_boot$gradient[5:8]
-diag(gamma_rur) <- rural_boot$gradient[5:8]
-
-gamma_urb[lower.tri(gamma_urb)] <- urban_boot$gradient[9:14]
-gamma_urb[upper.tri(gamma_urb)] <- t(gamma_urb)[upper.tri(t(gamma_urb))]
-
-gamma_semiu[lower.tri(gamma_semiu)] <- semiurban_boot$gradient[9:14]
-gamma_semiu[upper.tri(gamma_semiu)] <- t(gamma_semiu)[upper.tri(t(gamma_semiu))]
-
-gamma_rur[lower.tri(gamma_rur)] <- rural_boot$gradient[9:14]
-gamma_rur[upper.tri(gamma_rur)] <- t(gamma_rur)[upper.tri(t(gamma_rur))]
-
-C_urb <- gamma_urb - beta_urb %*% t(beta_urb)
-C_semiu <- gamma_semiu - beta_semiu %*% t(beta_semiu)
-C_rur <- gamma_rur - beta_rur %*% t(beta_rur)
-```
-
-\
-
-### Response to  selection
-```{r response}
-# Simulate random G-matrices
-set.seed(99)
-n_Gmats <- 10000 
-min_variance <- 0.13
-max_variance <- 0.87
-
-random_G <- RandomMatrix(num.traits = 4, num.matrices = n_Gmats, 
-                         min.var = min_variance, max.var = max_variance)
-
-# Compute response to selection
-deltaZ_urb <- matrix(NA, nrow = n_Gmats, ncol = ntraits)
-deltaZ_semiu <- matrix(NA, nrow = n_Gmats, ncol = ntraits)
-deltaZ_rur <- matrix(NA, nrow = n_Gmats, ncol = ntraits)
-
-for(i in 1:n_Gmats){
-deltaZ_urb[i, ] <- random_G[[i]] %*% beta_urb
-}
-deltaZ_urb <- as.data.frame(deltaZ_urb)
-data_long_urb <- tidyr::gather(deltaZ_urb, trait, z, V1:V4, factor_key = TRUE)
-data_long_urb$trait <- factor(data_long_urb$trait, 
-labels = c("Mean seed number", "Fruit crop size", "Mean fruit diameter", "Mean peel CHS concentration"))
-
-for(i in 1:n_Gmats){
-deltaZ_semiu[i,] <- random_G[[i]] %*% beta_semiu
-}
-deltaZ_semiu <- as.data.frame(deltaZ_semiu)
-data_long_semiu <- tidyr::gather(deltaZ_semiu, trait, z, V1:V4, factor_key=TRUE)
-data_long_semiu$trait <- factor(data_long_semiu$trait, 
-labels = c("Mean seed number", "Fruit crop size", "Mean fruit diameter", "Mean peel CHS concentration"))
-
-for(i in 1:n_Gmats){
-deltaZ_rur[i,] <- random_G[[i]] %*% beta_rur
-}
-deltaZ_rur <- as.data.frame(deltaZ_rur)
-data_long_rur <- tidyr::gather(deltaZ_rur, trait, z, V1:V4, factor_key=TRUE)
-data_long_rur$trait <- factor(data_long_rur$trait, 
-labels = c("Mean seed number", "Fruit crop size", "Mean fruit diameter", "Mean peel CHS concentration"))
-
-# Mean slope
-mu_urb <- tapply(data_long_urb$z, data_long_urb$trait, mean)
-mu_semiu <- tapply(data_long_semiu$z, data_long_semiu$trait, mean)
-mu_rur <- tapply(data_long_rur$z, data_long_rur$trait, mean)
-
-# Response to selection plots
-ggplot(data = data_long_urb, aes(x = z, fill = trait)) + geom_density(alpha = 0.2, adjust = 1.5) + 
-geom_vline(data = as.data.frame(mu_urb), aes(xintercept = mu_urb),
-             linetype = "dashed") + 
-geom_vline(aes(xintercept=0),linetype = "dashed", size = 1.5) + theme_bw() +
-xlab("Response to selection") + ylab("Density")
-
-ggplot(data = data_long_semiu, aes(x = z, fill = trait)) + geom_density(alpha = 0.2, adjust = 1.5) + 
-geom_vline(data = as.data.frame(mu_semiu), aes(xintercept = mu_semiu),
-             linetype = "dashed") + 
-geom_vline(aes(xintercept=0),linetype = "dashed", size = 1.5) + theme_bw() +
-xlab("Response to selection") + ylab("Density")
-
-ggplot(data = data_long_rur, aes(x = z, fill = trait)) + geom_density(alpha = 0.2, adjust = 1.5) + 
-geom_vline(data = as.data.frame(mu_rur), aes(xintercept = mu_rur),
-             linetype = "dashed") + 
-geom_vline(aes(xintercept=0),linetype = "dashed", size = 1.5) + theme_bw() +
-xlab("Response to selection") + ylab("Density")
-```
-
-\
-
-## Evolvability
-```{r evol}
-n_random_gradients <- 100 
-random_gradients <- rnorm(n_random_gradients) # Random linear selection gradients
-
-# Functions to calculate effect of mean curvature on random G-matrices
+# Plot phenotype-fitness functions
 ### Urban population
-curv_random_matrices_evolvabilities_urb <- function(x){
-  new_Gmat <- x + x %*% C_urb %*% x
-  try(MeanMatrixStatistics(new_Gmat, iterations = n_random_gradients, 
-                           parallel = TRUE))["evolvability"]
-}
+#### Fruit crop size
+new.z1 <- seq(min(urban$z1), max(urban$z1), length = 500)
+pred.z1 <- predict(mod_urb, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
+z1.low <- pred.z1$fit - 1.96*pred.z1$se
+z1.upp <- pred.z1$fit + 1.96*pred.z1$se
+plot(new.z1, pred.z1$fit, type = "n", xlab = "Standardised fruit crop size", 
+ylab = "Absolute fitness (number of fruits pecked)")
+polygon(x = c(new.z1, rev(new.z1)),
+        y = c(z1.low, rev(z1.upp)),
+        lty = 0, col = "#fff7ec")
+lines(new.z1, pred.z1$fit, lwd = 3,col = "darkorchid")
 
-evolvability_list_urb <- ldply(lapply(X = random_G, 
-                                  FUN = curv_random_matrices_evolvabilities_urb)) %>%
-  mutate(evolvability_urb = as.numeric(evolvability))
+### Semiurban population
+#### Fruit crop size
+new.z1 <- seq(min(semiurban$z1), max(semiurban$z1), length = 500)
+pred.z1 <- predict(mod_semiu, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
+z1.low <- pred.z1$fit - 1.96*pred.z1$se
+z1.upp <- pred.z1$fit + 1.96*pred.z1$se
+plot(new.z1, pred.z1$fit, type = "n", xlab = "Standardised fruit crop size", 
+ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 80))
+polygon(x = c(new.z1, rev(new.z1)),
+        y = c(z1.low, rev(z1.upp)),
+        lty = 0, col = "#fff7ec")
+lines(new.z1, pred.z1$fit, lwd = 3,col = "darkorchid")
 
-# saveRDS(evolvability_list_urb, file = "evol_urban.txt")
-
-### Semi-urban population
-curv_random_matrices_evolvabilities_semiu <- function(x){
-  new_Gmat <- x + x %*% C_semiu %*% x
-  try(MeanMatrixStatistics(new_Gmat, iterations = n_random_gradients, 
-                           parallel = TRUE))["evolvability"]
-}
-
-evolvability_list_semiu <- ldply(lapply(X = random_G, 
-                                  FUN = curv_random_matrices_evolvabilities_semiu)) %>%
-  mutate(evolvability_semiu = as.numeric(evolvability))
-
-# saveRDS(evolvability_list_semiu, file = "evol_semiurban.txt")
+#### Mean fruit diameter x mean seed number
+diamxseed <- data.frame(xdiam = semiurban$z2, xseed = semiurban$z3, W = semiurban$W)
+surf <- cbind(diamxseed$xdiam, diamxseed$xseed)
+m_diamxseed <- Tps(surf, diamxseed$W)
+surface(m_diamxseed, xlab = "Standardised mean fruit diameter",
+        ylab = "Standardised mean seed number", extrap = FALSE)
+points(semiurban$z2, semiurban$z3, pch = 19, cex = 2)
 
 ### Rural population
-curv_random_matrices_evolvabilities_rur <- function(x){
-  new_Gmat <- x + x %*% C_rur %*% x
-  try(MeanMatrixStatistics(new_Gmat, iterations = n_random_gradients, 
-                           parallel = TRUE))["evolvability"]
-}
+#### Fruit crop size
+new.z1 <- seq(-4, 4, length = 500)
+pred.z1 <- predict(mod_rur, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
+z1.low <- pred.z1$fit - 1.96*pred.z1$se
+z1.upp <- pred.z1$fit + 1.96*pred.z1$se
+plot(new.z1, pred.z1$fit, type = "n", xlab = "Standardised fruit crop size", 
+ylab = "Absolute fitness (number of fruits pecked)")
+polygon(x = c(new.z1, rev(new.z1)),
+        y = c(z1.low, rev(z1.upp)),
+        lty = 0, col = "#fff7ec")
+lines(new.z1, pred.z1$fit, lwd = 3, col = "darkorchid")
 
-evolvability_list_rur <- ldply(lapply(X = random_G, 
-                                  FUN = curv_random_matrices_evolvabilities_rur)) %>%
-  mutate(evolvability_rur = as.numeric(evolvability))
-
-# saveRDS(evolvability_list_rur, file = "evol_rural.txt")
-
-# Changes in evolvability between populations 10000 G-matrices using our best (mean) estimates of the curvature matrix.
-### Urban vs semi-urban
-random_evolvabilities_urb_semiu <- bind_cols(evolvability_list_urb, evolvability_list_semiu) %>%
-  tidyr::drop_na() %>%
-  mutate(Diff = evolvability_urb - evolvability_semiu)
-
-ggplot(random_evolvabilities_urb_semiu, aes(x=Diff)) + geom_histogram(bins=50,fill="gray80") +
-geom_vline(xintercept=0,linetype="dashed",size=1.5) + 
-geom_vline(xintercept=mean(random_evolvabilities_urb_semiu$Diff,na.rm=T),linetype="dashed") + theme_bw() +
-xlab(expression(paste(Delta, " evolvability (Urban - Semiurban)"))) + ylab("Frequency")
-
-positDiff_urb_semiu <- table(sign(random_evolvabilities_urb_semiu$Diff))[2]
-percDiff_urb_semiu <- 100*positDiff_urb_semiu/length(random_evolvabilities_urb_semiu$Diff) # Percentage of positive differences
-percDiff_urb_semiu
-
-### Semi-urban vs rural
-random_evolvabilities_semiu_rur <- bind_cols(evolvability_list_semiu, evolvability_list_rur) %>%
-  tidyr::drop_na() %>%
-  mutate(Diff = evolvability_semiu  - evolvability_rur)
-
-ggplot(random_evolvabilities_semiu_rur, aes(x=Diff)) + geom_histogram(bins=50, fill="gray70") +
-geom_vline(xintercept=0,linetype="dashed",size=1.5) + 
-geom_vline(xintercept=mean(random_evolvabilities_semiu_rur$Diff,na.rm=T),linetype="dashed") + theme_bw() +
-xlab(expression(paste(Delta, " evolvability (Semi-urban - rural)"))) + ylab("Frequency")
-
-positDiff_semiu_rur <- table(sign(random_evolvabilities_semiu_rur$Diff))[2]
-percDiff_semiu_rur <- 100*positDiff_semiu_rur/length(random_evolvabilities_semiu_rur$Diff) # Percentage of positive differences
-percDiff_semiu_rur
-
-### Urban vs rural
-random_evolvabilities_urb_rur <- bind_cols(evolvability_list_urb, evolvability_list_rur) %>%
-  tidyr::drop_na() %>%
-  mutate(Diff = evolvability_urb - evolvability_rur)
-
-ggplot(random_evolvabilities_urb_rur, aes(x=Diff)) + geom_histogram(bins=50, fill="gray70") +
-geom_vline(xintercept=0,linetype="dashed",size=1.5) + 
-geom_vline(xintercept=mean(random_evolvabilities_urb_rur$Diff,na.rm=T),linetype="dashed") + theme_bw() +
-xlab(expression(paste(Delta, " evolvability (Urban - Rural)"))) + ylab("Frequency")
-
-positDiff_urb_rur <- table(sign(random_evolvabilities_urb_rur$Diff))[2]
-percDiff_urb_rur <- 100*positDiff_urb_rur/length(random_evolvabilities_urb_rur$Diff) # Percentage of positive differences
-percDiff_urb_rur
+#### Mean fruit diameter x mean seed number
+diamxseed <- na.omit(data.frame(xdiam = rural$z2, xseed = rural$z3, W = rural$W))
+surf <- cbind(diamxseed$xdiam, diamxseed$xseed)
+m_diamxseed <- Tps(surf, diamxseed$W)
+surface(m_diamxseed, xlab = "Standardised mean fruit diameter",
+        ylab = "Standardised mean seed number", extrap = FALSE)
+points(rural$z2, rural$z3, pch = 19, cex = 2)
 ```
+
+\
+
+## Similarity between bird assemblages
+
+```{r sp_comp}
+set.seed(1001)
+birds <- read.table("data/Palacio&Ordano_birds_urbanisation.txt", head = TRUE)
+birds$idpopulation <- as.factor(birds$idpopulation)
+
+# Permanova
+adonis2(birds[, 3:10] ~ idpopulation, data = birds, method = "bray", permutations = 1000) %>% knitr::kable(., digits = 3)
+
+# Assumption of similar multivariate spread among populations
+permutest(betadisper(birds_dist, birds$idpopulation), pairwise = TRUE) 
+
+# Multiple comparisons and p-values adjustements
+birds_urbsemiu <- subset(birds, idpopulation == "La_Plata"| idpopulation == "Ranchos")
+birds_urbrur <- subset(birds, idpopulation == "La_Plata"| idpopulation == "Magdalena")
+birds_semiurur <- subset(birds, idpopulation == "Ranchos"| idpopulation == "Magdalena")
+
+urbsemiu <- adonis2(birds_urbsemiu[, 3:10] ~ idpopulation, data = birds_urbsemiu, method = "bray", permutations = 1000)
+urbrur <- adonis2(birds_urbrur[, 3:10] ~ idpopulation, data = birds_urbrur, method = "bray", permutations = 1000)
+semiurur <- adonis2(birds_semiurur[, 3:10] ~ idpopulation, data = birds_semiurur, method = "bray", permutations = 1000)
+
+p_adonis <- c(urbsemiu[1, 5], urbrur[1, 5], semiurur[1, 5])
+p.adjust(p_adonis, method = "holm")
+```
+
