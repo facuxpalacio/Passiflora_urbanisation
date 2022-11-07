@@ -1,5 +1,5 @@
 # Passiflora_urbanisation
-This repository contains data and code to reproduce analyses reported in the manuscript "*Urbanisation weakens phenotypic selection but enhances the adaptive potential of fruit traits in a seed-dispersal mutualism*".
+This repository contains data and code to reproduce analyses reported in the manuscript "*Urbanisation shapes phenotypic selection and the adaptive potential of fruit traits in a seed-dispersal mutualism*".
 
 # Repository structure
 
