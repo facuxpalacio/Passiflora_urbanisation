@@ -304,6 +304,64 @@ M4multi <- psem(
 
 M4multigroup <- multigroup(M4multi, group = "population")
 M4multigroup
+
+# Standardised estimates
+plants <- plants %>% mutate(z.diam = scale(x.diam)[,1]) %>% mutate(z.nseeds = scale(x.nseeds)[,1]) %>%
+mutate(z.peel.sugar = scale(x.peel.sugar)[,1]) %>%
+mutate(z.crop = scale(crop)[,1]) %>%
+mutate(z.fruit_rem = scale(fruit_rem)[,1]) %>%
+mutate(z.visits = scale(visits)[,1])
+
+# One model per population
+lp <- subset(plants, population == "La_Plata")
+ra <- subset(plants, population == "Ranchos")
+mg <- subset(plants, population == "Magdalena")
+
+zM4_lp <- psem(
+  # Influence of urbanisation on fruit traits and bird visitation
+  lm(z.crop ~ z.length, data = lp), 
+  lm(z.peel.sugar ~ z.crop, data = lp),
+  
+  # Influence of urbanisation on fitness
+  lm(z.fruit_rem ~ z.crop + z.diam + z.nseeds + z.peel.sugar + z.length + z.visits, data = lp),
+  
+  # Fruit trait correlations
+  z.nseeds %~~% z.diam)
+
+reszM4_lp <- summary(zM4_lp)
+reszM4_lp
+
+zM4_ra <- psem(
+  # Influence of urbanisation on fruit traits and bird visitation
+  lm(z.crop ~ z.length, data = ra), 
+  lm(z.peel.sugar ~ z.crop, data = ra),
+  
+  # Influence of urbanisation on fitness
+  lm(z.fruit_rem ~ z.crop + z.diam + z.nseeds + z.peel.sugar + z.length + z.visits, data = ra),
+  
+  # Fruit trait correlations
+  z.nseeds %~~% z.diam)
+
+reszM4_ra <- summary(zM4_ra)
+
+zM4_mg <- psem(
+  # Influence of urbanisation on fruit traits and bird visitation
+  lm(z.crop ~ z.length, data = mg), 
+  lm(z.peel.sugar ~ z.crop, data = mg),
+  
+  # Influence of urbanisation on fitness
+  lm(z.fruit_rem ~ z.crop + z.diam + z.nseeds + z.peel.sugar + z.length + z.visits, data = mg),
+  
+  # Fruit trait correlations
+  z.nseeds %~~% z.diam)
+
+reszM4_mg <- summary(zM4_mg)
+reszM4_mg
+
+# Relationship between fruit crop and removal for each population
+population <- c("Urban", "Semi-urban", "Rural")
+coeffs <- rbind(reszM4_lp$coeff[3, ], reszM4_ra$coeff[3, ], reszM4_mg$coeff[3, ])
+data.frame(population, coeffs)
 ```
 
 \
@@ -314,11 +372,14 @@ M4multigroup
 plants <- read.table("data/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
 plants$population <- as.factor(plants$population)
 
-plants %>% group_by(population) %>% summarise(Wfruit_removal = mean(fruit_rem),
+plants %>% group_by(population) %>% summarise(Wfruit_removal = mean(fruit_rem), 
                                               Ifruit_removal = var(fruit_rem/mean(fruit_rem)),
                                               n_plants = dplyr::n(),
                                               sdIfruit_removal = Ifruit_removal/(2*n_plants)) %>% 
   knitr::kable(., caption = "Opportunity for selection", digits = 2)
+
+plants <- plants %>% group_by(population) %>% mutate(wrel = fruit_rem/mean(fruit_rem))
+bartlett.test(wrel ~ population, data = plants)
 ```
 
 ### Step 1. Relative fitness and standardisation of phenotypic traits (mean = 0, variance = 1)
@@ -336,10 +397,10 @@ urban$x2 <- urban$x.diam
 urban$x3 <- urban$x.nseeds
 urban$x4 <- urban$x.peel.sugar
 
-urban$z1 <- (urban$x1 - mean(urban$x1, na.rm =T))/sd(urban$x1, na.rm =T)
-urban$z2 <- (urban$x2 - mean(urban$x2, na.rm =T))/sd(urban$x2, na.rm =T)
-urban$z3 <- (urban$x3 - mean(urban$x3, na.rm =T))/sd(urban$x3, na.rm =T)
-urban$z4 <- (urban$x4 - mean(urban$x4, na.rm =T))/sd(urban$x4, na.rm =T)
+urban$z1 <- (urban$x1 - mean(urban$x1, na.rm = T))/sd(urban$x1, na.rm = T)
+urban$z2 <- (urban$x2 - mean(urban$x2, na.rm = T))/sd(urban$x2, na.rm = T)
+urban$z3 <- (urban$x3 - mean(urban$x3, na.rm = T))/sd(urban$x3, na.rm = T)
+urban$z4 <- (urban$x4 - mean(urban$x4, na.rm = T))/sd(urban$x4, na.rm = T)
 
 # Semiurban
 semiurban$W <- semiurban$fruit_rem
@@ -477,7 +538,7 @@ cor(cbind(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), use = "comple
 cor(cbind(rural$z1, rural$z2, rural$z3, rural$z4), use = "complete.obs")
 ```
 
-### Step 4. Estimation of selection gradients, standard errors and credible intervals using MCMC
+### Step 4. Estimation of selection gradients, standard errors and p-values
 What follows is the code from Morrissey & Goudie (2022) Evolution 76-7:1378–1390 to estimate gradients from log-linear models.
 ```{r gradients}
 v <- function (m){m[lower.tri(m,diag=TRUE)]}
@@ -635,8 +696,8 @@ ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 50))
 polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
-lines(new.z1, pred.z1$fit, lwd = 3,col = "darkorchid")
 points(urban$z1, urban$W, cex = 2.5, col = "gray70")
+lines(new.z1, pred.z1$fit, lwd = 4,col = "darkorchid")
 
 ### Semiurban population
 #### Fruit crop size
@@ -649,8 +710,8 @@ ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 80))
 polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
-lines(new.z1, pred.z1$fit, lwd = 3,col = "darkorchid")
 points(semiurban$z1, semiurban$W, cex = 2.5, col = "gray70")
+lines(new.z1, pred.z1$fit, lwd = 4,col = "darkorchid")
 
 #### Mean fruit diameter x mean seed number
 diamxseed <- data.frame(xdiam = semiurban$z2, xseed = semiurban$z3, W = semiurban$W)
@@ -662,7 +723,7 @@ points(semiurban$z2, semiurban$z3, cex = 2)
 
 ### Rural population
 #### Fruit crop size
-new.z1 <- seq(-2, 2.2, length = 500)
+new.z1 <- seq(-2, 2, length = 500)
 pred.z1 <- predict(mod_rur, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
 z1.low <- pred.z1$fit - 1.96*pred.z1$se
 z1.upp <- pred.z1$fit + 1.96*pred.z1$se
@@ -671,8 +732,8 @@ ylab = "Absolute fitness (number of fruits pecked)")
 polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
-lines(new.z1, pred.z1$fit, lwd = 3, col = "darkorchid")
 points(rural$z1, rural$W, cex = 2.5, col = "gray70")
+lines(new.z1, pred.z1$fit, lwd = 4, col = "darkorchid")
 
 #### Mean fruit diameter x mean seed number
 diamxseed <- na.omit(data.frame(xdiam = rural$z2, xseed = rural$z3, W = rural$W))
@@ -714,5 +775,13 @@ semiurur %>% knitr::kable(., digits = 3, caption = "Semiurban vs rural")
 
 p_adonis <- c(urbsemiu[1, 5], urbrur[1, 5], semiurur[1, 5])
 p.adjust(p_adonis, method = "holm")
+
+# Rank abundance profiles
+rural <- subset(birds, idpopulation == "Magdalena")[, -c(1,2)]
+sort(colSums(rural)/sum(rural), decreasing = TRUE)
+semiurban <- subset(birds, idpopulation == "Ranchos")[, -c(1,2)]
+sort(colSums(semiurban)/sum(semiurban), decreasing = TRUE)
+urban <- subset(birds, idpopulation == "La_Plata")[, -c(1,2)]
+sort(colSums(urban)/sum(urban), decreasing = TRUE)
 ```
 
