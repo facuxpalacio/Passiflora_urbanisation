@@ -156,47 +156,94 @@ summary(multlength)
 ## Boxplots of fruit and seed traits along with mixed model p-values
 ```{r boxplots}
 crop <- ggplot(data = plants, aes(x = population, y = crop)) +
-  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
   geom_jitter(position = position_jitter(0.2), color = "orange", 
               alpha = 0.6, size = 2) +
-  xlab("Urbanisation level") + ylab("Fruit crop size") +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Fruit crop size") +
   geom_text(data = data.frame(x = 1:3, y = c(30, 130, 110)), 
             aes(x = x, y = y, label = c("a", "b", "b"))) + theme_bw()
 
-diam <- ggplot(data = fruits, aes(x = population, y = diam)) +
-  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5) +
+length <- ggplot(data = plants, aes(x = population, y = length)) +
   geom_jitter(position = position_jitter(0.2), color = "orange", 
               alpha = 0.6, size = 2) +
-  xlab("Urbanisation level") + ylab("Fruit diameter (mm)") +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Plant length (m)") +
+  geom_text(data = data.frame(x = 1:3, y = c(7, 5.2, 10.2)), 
+            aes(x = x, y = y, label = c("a", "a", "b"))) + theme_bw()
+
+diam <- ggplot(data = fruits, aes(x = population, y = diam)) +
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Fruit diameter (mm)") +
   geom_text(data = data.frame(x = 1:3, y = c(44, 52, 47)), 
             aes(x = x, y = y, label = c("a", "b", "a"))) + theme_bw()
 
 seedn <- ggplot(data = fruits, aes(x = population, y = seedn)) +
-  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
   geom_jitter(position = position_jitter(0.2), color = "orange", 
               alpha = 0.6, size = 2) +
-  xlab("Urbanisation level") + ylab("Seed number") +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Seed number") +
   geom_text(data = data.frame(x = 1:3, y = c(315, 350, 360)), 
             aes(x = x, y = y, label = c("ns", "ns", "ns"))) + theme_bw()
 
 pulp_bx <- ggplot(data = pulp, aes(x = population, y = sugar_bx_obs)) +
-  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
   geom_jitter(position = position_jitter(0.2), color = "orange", 
               alpha = 0.6, size = 2) +
-  xlab("Urbanisation level") + ylab("Pulp soluble carbohydrate content (?Bx)") +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Pulp soluble carbohydrate content (ºBx)") +
   geom_text(data = data.frame(x = 1:3, y = c(22, 30, 29)), 
             aes(x = x, y = y, label = c("a", "b", "c"))) + theme_bw()
 
 peel_bx <- ggplot(data = peel, aes(x = population, y = true_sugar_bx)) +
-  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5)+
   geom_jitter(position = position_jitter(0.2), color = "orange", 
               alpha = 0.6, size = 2) +
-  xlab("Urbanisation level") + ylab("Peel soluble carbohydrate content (?Bx)") +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Peel soluble carbohydrate content (ºBx)") +
   geom_text(data = data.frame(x = 1:3, y = c(5, 8.7, 8)), 
             aes(x = x, y = y, label = c("a", "b", "b"))) + theme_bw()
   
-ggarrange(crop, diam, seedn, pulp_bx, peel_bx, nrow = 3, ncol = 2)
+ggarrange(crop, length, diam, seedn, pulp_bx, peel_bx, nrow = 3, ncol = 3)
 ```
+
+\
+
+# Influence of urbanisation on bird visitation and fruit removal (Supplementary material)
+
+```{r removal}
+plants <- read.table("data/Palacio&Ordano_plants_urbanisation.txt", head = TRUE)
+plants$population <- as.factor(plants$population)
+
+mvisits <- glm(visits ~ population, family = poisson, data = plants)
+anova(mvisits, test = "Chisq")
+multvisits <- glht(mvisits, linfct = mcp(population = "Tukey"))
+summary(multvisits)
+
+mrem <- glm.nb(fruit_rem ~ population, data = plants)
+anova(mrem)
+multrem <- glht(mrem, linfct = mcp(population = "Tukey"))
+summary(multrem)
+
+visits <- ggplot(data = plants, aes(x = population, y = visits)) +
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Number of visits") +
+  geom_text(data = data.frame(x = 1:3, y = c(0.5, 1.4, 0.5)), 
+            aes(x = x, y = y, label = c("a", "b", "ab"))) + theme_bw()
+
+fruit_rem <- ggplot(data = plants, aes(x = population, y = fruit_rem)) +
+  geom_jitter(position = position_jitter(0.2), color = "orange", 
+              alpha = 0.6, size = 2) +
+  geom_boxplot(color = "black", outlier.shape = NA, width = 0.5, alpha = 0.3) +
+  xlab("Population") + ylab("Number of fruits pecked") +
+  geom_text(data = data.frame(x = 1:3, y = c(15, 75, 28)), 
+            aes(x = x, y = y, label = c("a", "b", "b"))) + theme_bw()
+
+ggarrange(visits, fruit_rem, nrow = 1, ncol = 2)
+
+```
+
 
 \
 
@@ -210,6 +257,7 @@ plants <- na.omit(plants)
 M1 <- psem(
   # Influence of urbanisation on fruit traits 
   glm.nb(crop ~ population + length, data = plants), 
+  lm(length ~ population, data = plants),
   lm(x.diam ~ population, data = plants), 
   lm(x.nseeds ~ population, data = plants),
   lm(x.peel.sugar ~ population + crop, data = plants), 
@@ -229,6 +277,7 @@ resM1 <- summary(M1, direction = c("x.nseeds <- crop"))
 M2 <- psem(
   # Influence of urbanisation on fruit traits and bird visitation
   glm.nb(crop ~ population + length, data = plants), 
+  lm(length ~ population, data = plants),
   lm(x.diam ~ population, data = plants), 
   lm(x.nseeds ~ population, data = plants),
   lm(x.peel.sugar ~ population + crop, data = plants),
@@ -247,7 +296,8 @@ resM2 <- summary(M2, direction = c("x.nseeds <- crop"))
 # M3. Influence of urbanisation on bird visitation
 M3 <- psem(
   # Influence of urbanisation on fruit traits and bird visitation
-  glm.nb(crop ~ population + length, data = plants), 
+  glm.nb(crop ~ population + length, data = plants),
+  lm(length ~ population, data = plants),
   lm(x.diam ~ population, data = plants), 
   lm(x.nseeds ~ population, data = plants),
   lm(x.peel.sugar ~ population + crop, data = plants),
@@ -267,6 +317,7 @@ resM3 <- summary(M3, direction = c("x.nseeds <- crop"))
 M4 <- psem(
   # Influence of urbanisation on fruit traits and bird visitation
   glm.nb(crop ~ population + length, data = plants), 
+  lm(length ~ population, data = plants),
   lm(x.diam ~ population, data = plants), 
   lm(x.nseeds ~ population, data = plants),
   lm(x.peel.sugar ~ population + crop, data = plants),
@@ -309,6 +360,7 @@ M4multigroup
 plants <- plants %>% mutate(z.diam = scale(x.diam)[,1]) %>% mutate(z.nseeds = scale(x.nseeds)[,1]) %>%
 mutate(z.peel.sugar = scale(x.peel.sugar)[,1]) %>%
 mutate(z.crop = scale(crop)[,1]) %>%
+mutate(z.crop = scale(length)[,1]) %>%
 mutate(z.fruit_rem = scale(fruit_rem)[,1]) %>%
 mutate(z.visits = scale(visits)[,1])
 
@@ -778,10 +830,11 @@ p.adjust(p_adonis, method = "holm")
 
 # Rank abundance profiles
 rural <- subset(birds, idpopulation == "Magdalena")[, -c(1,2)]
-sort(colSums(rural)/sum(rural), decreasing = TRUE)
+abu_rur <- sort(colSums(rural)/sum(rural), decreasing = TRUE)
 semiurban <- subset(birds, idpopulation == "Ranchos")[, -c(1,2)]
-sort(colSums(semiurban)/sum(semiurban), decreasing = TRUE)
+abu_semiu <- sort(colSums(semiurban)/sum(semiurban), decreasing = TRUE)
 urban <- subset(birds, idpopulation == "La_Plata")[, -c(1,2)]
-sort(colSums(urban)/sum(urban), decreasing = TRUE)
+abu_urb <- sort(colSums(urban)/sum(urban), decreasing = TRUE)
+bird_abund <- data.frame(species = names(abu_rur), abu_rur, abu_semiu, abu_urb)
 ```
 
