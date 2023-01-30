@@ -63,7 +63,7 @@ ggraph(cors) +
                               colors = c("firebrick2", "dodgerblue2")) +
   geom_node_point(color = "black", size = 8) +
   geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
-                 repel = TRUE)
+                 repel = TRUE) + ggtitle("Urban population")
 ```
 
 ```{r corr_semiu, fig.cap = "Correlation network between fruit and seed traits in a semiurban *Passiflora caerulea* population. FM: fruit mass, FL: fruit length, FD: fruit diameter, SN: seed number, PuC: pulp soluble carbohydrate concentration, PeC: peel soluble carbohydrate concentration"}
@@ -82,7 +82,7 @@ ggraph(cors) +
                               colors = c("firebrick2", "dodgerblue2")) +
   geom_node_point(color = "black", size = 8) +
   geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
-                 repel = TRUE)
+                 repel = TRUE) + ggtitle("Semi-urban population")
 ```
 
 ```{r corr_rur, fig.cap = "Correlation network between fruit and seed traits in a rural *Passiflora caerulea* population. FM: fruit mass, FL: fruit length, FD: fruit diameter, SN: seed number, PuC: pulp soluble carbohydrate concentration, PeC: peel soluble carbohydrate concentration"}
@@ -101,7 +101,7 @@ ggraph(cors) +
                               colors = c("firebrick2", "dodgerblue2")) +
   geom_node_point(color = "black", size = 8) +
   geom_node_text(aes(label = c("FM", "FL", "FD", "SN", "PuC", "PeC")), 
-                 repel = TRUE)
+                 repel = TRUE) + ggtitle("Rural population")
 ```
 
 \
@@ -360,14 +360,14 @@ M4multigroup
 plants <- plants %>% mutate(z.diam = scale(x.diam)[,1]) %>% mutate(z.nseeds = scale(x.nseeds)[,1]) %>%
 mutate(z.peel.sugar = scale(x.peel.sugar)[,1]) %>%
 mutate(z.crop = scale(crop)[,1]) %>%
-mutate(z.crop = scale(length)[,1]) %>%
+mutate(z.length = scale(length)[,1]) %>%
 mutate(z.fruit_rem = scale(fruit_rem)[,1]) %>%
 mutate(z.visits = scale(visits)[,1])
 
 # One model per population
-lp <- subset(plants, population == "La_Plata")
-ra <- subset(plants, population == "Ranchos")
-mg <- subset(plants, population == "Magdalena")
+lp <- subset(plants, population == "urban")
+ra <- subset(plants, population == "semiurban")
+mg <- subset(plants, population == "rural")
 
 zM4_lp <- psem(
   # Influence of urbanisation on fruit traits and bird visitation
@@ -463,10 +463,10 @@ semiurban$x2 <- semiurban$x.diam
 semiurban$x3 <- semiurban$x.nseeds
 semiurban$x4<- semiurban$x.peel.sugar
 
-semiurban$z1 <- (semiurban$x1 - mean(semiurban$x1, na.rm =T))/sd(semiurban$x1, na.rm =T)
-semiurban$z2 <- (semiurban$x2 - mean(semiurban$x2, na.rm =T))/sd(semiurban$x2, na.rm =T)
-semiurban$z3 <- (semiurban$x3 - mean(semiurban$x3, na.rm =T))/sd(semiurban$x3, na.rm =T)
-semiurban$z4 <- (semiurban$x4 - mean(semiurban$x4, na.rm =T))/sd(semiurban$x4, na.rm =T)
+semiurban$z1 <- (semiurban$x1 - mean(semiurban$x1, na.rm =T))/sd(semiurban$x1, na.rm = T)
+semiurban$z2 <- (semiurban$x2 - mean(semiurban$x2, na.rm =T))/sd(semiurban$x2, na.rm = T)
+semiurban$z3 <- (semiurban$x3 - mean(semiurban$x3, na.rm =T))/sd(semiurban$x3, na.rm = T)
+semiurban$z4 <- (semiurban$x4 - mean(semiurban$x4, na.rm =T))/sd(semiurban$x4, na.rm = T)
 
 # Rural
 rural$W <- rural$fruit_rem
@@ -477,10 +477,10 @@ rural$x2 <- rural$x.diam
 rural$x3 <- rural$x.nseeds
 rural$x4 <- rural$x.peel.sugar
 
-rural$z1 <- (rural$x1 - mean(rural$x1, na.rm = T))/sd(rural$x1, na.rm =T)
-rural$z2 <- (rural$x2 - mean(rural$x2, na.rm = T))/sd(rural$x2, na.rm =T)
-rural$z3 <- (rural$x3 - mean(rural$x3, na.rm = T))/sd(rural$x3, na.rm =T)
-rural$z4 <- (rural$x4 - mean(rural$x4, na.rm = T))/sd(rural$x4, na.rm =T)
+rural$z1 <- (rural$x1 - mean(rural$x1, na.rm = T))/sd(rural$x1, na.rm = T)
+rural$z2 <- (rural$x2 - mean(rural$x2, na.rm = T))/sd(rural$x2, na.rm =T )
+rural$z3 <- (rural$x3 - mean(rural$x3, na.rm = T))/sd(rural$x3, na.rm = T)
+rural$z4 <- (rural$x4 - mean(rural$x4, na.rm = T))/sd(rural$x4, na.rm = T)
 ```
 
 #### Step 2. Testing multivariate normality of phenotypic traits
@@ -503,7 +503,7 @@ ggplot(data = urban, aes(x = z4)) + xlim(-4, 4) +
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
   # Multivariate normality test
-mvn(data.frame(urban$z1, urban$z2, urban$z3, urban$z4), mvnTest = "hz")$multivariateNormality
+MVN::mvn(data.frame(urban$z1, urban$z2, urban$z3, urban$z4), mvnTest = "hz")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -535,7 +535,7 @@ ggplot(data = semiurban, aes(x = z4)) + xlim(-4, 4) +
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
   # Multivariate normality test
-mvn(data.frame(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), mvnTest = "hz")$multivariateNormality
+MVN::mvn(data.frame(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), mvnTest = "hz")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -567,7 +567,7 @@ ggplot(data = rural, aes(x = z4)) + xlim(-4, 4) +
   geom_density(col = "red", fill = "red", alpha = 0.3) + theme_classic()
 
   # Multivariate normality test
-mvn(data.frame(rural$z1, rural$z2, rural$z3, rural$z4), mvnTest = "hz")$multivariateNormality
+MVN::mvn(data.frame(rural$z1, rural$z2, rural$z3, rural$z4), mvnTest = "hz")$multivariateNormality
 
   # Q-Q plots
 layout(matrix(1:4, 2, 2))
@@ -585,9 +585,9 @@ layout(1)
 #### Step 3. Assessing collinearity of phenotypic traits
 ```{r collinearity}
   # Pearson correlation between traits
-cor(cbind(urban$z1, urban$z2, urban$z3, urban$z4), use = "complete.obs")
-cor(cbind(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), use = "complete.obs")
-cor(cbind(rural$z1, rural$z2, rural$z3, rural$z4), use = "complete.obs")
+round(cor(cbind(urban$z1, urban$z2, urban$z3, urban$z4), use = "complete.obs"), 2)
+round(cor(cbind(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), use = "complete.obs"), 2)
+round(cor(cbind(rural$z1, rural$z2, rural$z3, rural$z4), use = "complete.obs"), 2)
 ```
 
 ### Step 4. Estimation of selection gradients, standard errors and p-values
@@ -836,5 +836,9 @@ abu_semiu <- sort(colSums(semiurban)/sum(semiurban), decreasing = TRUE)
 urban <- subset(birds, idpopulation == "La_Plata")[, -c(1,2)]
 abu_urb <- sort(colSums(urban)/sum(urban), decreasing = TRUE)
 bird_abund <- data.frame(species = names(abu_rur), abu_rur, abu_semiu, abu_urb)
+
+abu_rur
+abu_semiu
+abu_urb
 ```
 
