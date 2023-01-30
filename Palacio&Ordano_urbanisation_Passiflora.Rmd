@@ -483,7 +483,7 @@ rural$z3 <- (rural$x3 - mean(rural$x3, na.rm = T))/sd(rural$x3, na.rm = T)
 rural$z4 <- (rural$x4 - mean(rural$x4, na.rm = T))/sd(rural$x4, na.rm = T)
 ```
 
-#### Step 2. Testing multivariate normality of phenotypic traits
+### Step 2. Testing multivariate normality of phenotypic traits
 ```{r mvn}
 ### Urban
 ggplot(data = urban, aes(x = z1)) + xlim(-2, 4) +
@@ -581,14 +581,16 @@ qqnorm(rural$z4, cex = 1.5, pch = 19, col = rgb(red = 0, green = 0, blue = 0, al
 qqline(rural$z4, col = "red", lwd = 2)
 layout(1)
 ```
+\
 
-#### Step 3. Assessing collinearity of phenotypic traits
+### Step 3. Assessing collinearity of phenotypic traits
 ```{r collinearity}
   # Pearson correlation between traits
 round(cor(cbind(urban$z1, urban$z2, urban$z3, urban$z4), use = "complete.obs"), 2)
 round(cor(cbind(semiurban$z1, semiurban$z2, semiurban$z3, semiurban$z4), use = "complete.obs"), 2)
 round(cor(cbind(rural$z1, rural$z2, rural$z3, rural$z4), use = "complete.obs"), 2)
 ```
+\
 
 ### Step 4. Estimation of selection gradients, standard errors and p-values
 What follows is the code from Morrissey & Goudie (2022) Evolution 76-7:1378–1390 to estimate gradients from log-linear models.
