@@ -741,12 +741,12 @@ knitr::kable(., digits = 3, caption = "Selection gradients of the rural populati
 # Plot phenotype-fitness functions
 ### Urban population
 #### Fruit crop size
-new.z1 <- seq(min(urban$z1), max(urban$z1), length = 500)
+new.z1 <- seq(min(urban$z1), max(urban$z1)+0.3, length = 500)
 pred.z1 <- predict(mod_urb, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
 z1.low <- pred.z1$fit - 1.96*pred.z1$se
 z1.upp <- pred.z1$fit + 1.96*pred.z1$se
 plot(new.z1, pred.z1$fit, type = "n", xlab = "Standardised (log) fruit crop size", 
-ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 50))
+ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 80))
 polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
@@ -765,7 +765,7 @@ polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
 points(semiurban$z1, semiurban$W, cex = 2.5, col = "gray70")
-lines(new.z1, pred.z1$fit, lwd = 4,col = "darkorchid")
+lines(new.z1, pred.z1$fit, lwd = 4, col = "darkorchid")
 
 #### Mean fruit diameter x mean seed number
 diamxseed <- data.frame(xdiam = semiurban$z2, xseed = semiurban$z3, W = semiurban$W)
@@ -777,12 +777,12 @@ points(semiurban$z2, semiurban$z3, cex = 2)
 
 ### Rural population
 #### Fruit crop size
-new.z1 <- seq(-2, 2, length = 500)
+new.z1 <- seq(-2, 2.5, length = 500)
 pred.z1 <- predict(mod_rur, type = "response", newdata = data.frame(z1 = new.z1, z2 = 0, z3 = 0, z4 = 0), se = TRUE)
 z1.low <- pred.z1$fit - 1.96*pred.z1$se
 z1.upp <- pred.z1$fit + 1.96*pred.z1$se
 plot(new.z1, pred.z1$fit, type = "n", xlab = "Standardised (log)fruit crop size", 
-ylab = "Absolute fitness (number of fruits pecked)")
+ylab = "Absolute fitness (number of fruits pecked)", ylim = c(0, 80))
 polygon(x = c(new.z1, rev(new.z1)),
         y = c(z1.low, rev(z1.upp)),
         lty = 0, col = "#fff7ec")
@@ -843,4 +843,3 @@ abu_rur
 abu_semiu
 abu_urb
 ```
-
