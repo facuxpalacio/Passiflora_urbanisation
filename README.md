@@ -1,5 +1,5 @@
 # Passiflora_urbanisation
-This repository contains data and code to reproduce analyses reported in the manuscript "*Urbanisation shapes phenotypic selection of fruit traits in a seed-dispersal mutualism*".
+This repository contains data and code to reproduce analyses reported in the article *Palacio FX & M Ordano (2023) Urbanisation shapes phenotypic selection of fruit traits in a seed-dispersal mutualism. Evolution XX: XX-XX*.
 
 # Repository structure
 
